@@ -1,0 +1,257 @@
+##########################
+### Initial conditions ###
+##########################
+
+C(0)=0.1
+Cm(0)=0.1
+Cnd(0)=0.1
+#Cer(0)=500
+Ct(0)=2000
+ADPm(0)=7000
+ADPc(0)=1500
+
+
+
+##################
+### Parameters ###
+##################
+
+par Ps=0
+#par ps_i=0
+
+par RV1 = 2000
+par RV2 = 10
+par RV3 = 15
+par RS1 = 0.15
+par RS2 = 0.15
+
+par omega_c=0.001
+par tp=0.1
+par fc = 0.01
+par fm = 0.0003
+par fn = 0.01
+par fer = 0.01
+
+par kipr=0.3
+par nkipr=0.15
+par Vs=30
+par nVs=10
+par Ks=0.35
+par Kb=1e-8
+par Vmcu=0.00001
+par nVmcu=0.00001
+par Vncx=0.5
+par nVncx=0.5
+par K1=19
+par K2=0.38
+par p1=0.1
+par p2=0.016
+par Vsocc=0.8
+par Ksocc=100
+par Vrocc=0.25
+par Jleakin=0.0019
+par Vp=0.2
+par Kp=0.45
+
+
+NADt=250
+Amt = 15000
+Act = 2500
+Cpc = 1.8
+L=50
+a1 = 20
+a2 = 3.43
+par Vhyd=150
+Khyd=1000
+Vant=5000
+ac=0.111
+am=0.139
+F=96480
+R=8315
+Temp=310.16
+Vf=35000
+kgly=450
+ko=600
+par Vagc=100
+Kagc=0.14
+par p4=0.005
+q1=1
+q2=0.1
+q3=100
+q4=177
+q5=5
+q6=10000
+q7=190
+q8=8.5
+q9=2
+q10=-30
+
+
+Cer = RV2*fer*(Ct-C/fc-Cm/(fm*RV3)-Cnd/(fn*RV1))
+FRT = F/(R*Temp)
+
+
+
+#################
+### IPR model ###
+#################
+
+Cp0=700
+q26=10500
+q62=4010
+phi=q26/(q26+q62)
+
+q42a=1.8*(P)^2/((P)^2+0.34)
+V42=110*(P)^2/((P)^2+0.01)
+
+k42=0.49+0.543*(P)^3/((P)^3+64)
+km42=0.41+25*(P)^3/((P)^3+274.6)
+
+q24a=1+5/((P)^2+0.25)
+V24=62+880/((P)^2+4)
+
+k24=0.35
+km24=80
+
+Cp=Cp0*(Cer/680)
+mi24=Cp^3/(Cp^3+k24^3)
+hi24=km24^2/(Cp^2+km24^2)
+
+mi42=C^3/(C^3+k42^3)
+hi42=km42^3/(C^3+km42^3)
+
+min42=Cnd^3/(Cnd^3+k42^3)
+hin42=km42^3/(Cnd^3+km42^3)
+
+q42=q42a+V42*mi42*h42
+nq42=q42a+V42*min42*nh42
+q24=q24a+V24*(1-mi24*hi24)
+
+D = q42*(q62+q26)/(q42*q62+q42*q26+q24*q62)
+nD = nq42*(q62+q26)/(nq42*q62+nq42*q26+q24*q62)
+
+## open probability ##
+
+Oipr=phi*D
+nOipr=phi*nD
+
+par L42=0.02
+par LH=0.1
+par Lm42=100
+
+#par Lh24=40
+#par Lm24=100
+
+Lh42=(1-D)*L42+D*LH
+nLh42=(1-nD)*L42+nD*LH
+
+NADm = NADt - NADHm
+ATPm = Amt - ADPm
+ATPc = Act - ADPc
+
+######################
+### Calcium fluxes ###
+######################
+
+Jipr	= kipr*Oipr*(Cer-C)
+Jserca	= Vs*((C^2-Kb*Cer^2)/(Ks^2+C^2))
+Jncx	= Vncx*(Cm/C)*exp(p2*Vm)
+Jmcu	= Vmcu*(C/K1)*(1+C/K1)^3*exp(p1*Vm)/((1+C/K1)^4+(L/(1+C/K2)^2.3))
+Jdiff	= omega_c*(Cnd-C)
+
+
+Jrocc	= Vrocc*P
+Jsocc	= Vsocc*Ksocc^4/(Ksocc^4+Cer^4)
+Jin	= Jleakin+Jrocc+Jsocc
+Jpm	= Vp*C^2/(C^2+Kp^2)
+
+
+nJipr	= nkipr*nOipr*(Cer-Cnd)
+nJserca	= nVs*((Cnd^2-Kb*Cer^2)/(Ks^2+Cnd^2))
+nJmcu	= nVmcu*(Cnd/K1)*(1+Cnd/K1)^3*exp(p1*Vm)/((1+Cnd/K1)^4+(L/(1+Cnd/K2)^2.3))
+nJncx	= nVncx*(Cm/Cnd)*exp(p2*Vm)
+
+
+
+##########################
+### Metabolic pathways ###
+##########################
+
+Ipdh	= kgly*(1/(q1+NADHm/NADm))*(Cm/(q2+Cm))
+Iagc	= Vagc*(C/(Kagc+C))*(q2/(q2+Cm))*exp(p4*Vm)
+Io	= ko*(NADHm/(q3+NADHm))/(1+exp((Vm-q4)/q5))
+Jant	= Vant*(1-(ac*ATPc*ADPm/(am*ADPc*ATPm))*exp(-FRT*Vm))/((1+ac*(ATPc/ADPc)*exp(-0.5*FRT*Vm))*(1+ADPm/(am*ATPm)))
+If1	= Vf*(q6/(q6+ATPm))/(1+exp((q7-Vm)/q8))
+Ihyd	= Jserca*(1-RS1)/2+nJserca*RS1/2+Jpm/2+Vhyd*(ATPc/(ATPc+Khyd))
+Jhleak	= q9*Vm+q10
+
+
+
+#################
+### IP3 pulse ###
+#################
+# M=0.15, t0=30, dur=0.5, crdeg=0.05
+par M=0
+par t0=100
+par dur=0.2
+pulse=M*heav(t-t0)*heav(t0+dur-t)
+par t1=600
+par dur1=800
+#ps = ps_i*heav(t-t1)*heav(t1+dur1-t)
+
+
+############
+### ODEs ###
+############
+
+dC/dt = fc*(Jipr*(1-RS1) - Jserca*(1-RS1) + Jncx*(1-RS2)/RV3 - Jmcu*(1-RS2)/RV3 + Jdiff + (Jin-Jpm))
+
+dCnd/dt = fn*RV1*(nJipr*RS1 - nJserca*RS1 - Jdiff + nJncx*RS2/RV3 - nJmcu*RS2/RV3)
+
+dCm/dt = fm*(nJmcu*RS2 - nJncx*RS2 + Jmcu*(1-RS2) - Jncx*(1-RS2))
+
+dCt/dt = (Jin-Jpm)
+
+dADPc/dt = Ihyd - Jant/RV3
+
+dADPm/dt = Jant - If1
+
+dNADHm/dt = Ipdh - Io + Iagc
+
+dVm/dt = (a1*Io - a2*If1 - Jant - Jhleak - Jncx*(1-RS2) - nJncx*RS2 - 2*(Jmcu*(1-RS2) + nJmcu*RS2) - Iagc)/Cpc
+
+dP/dt = pulse + tp*(Ps-P)
+
+dh42/dt = Lh42*(hi42-h42)
+dnh42/dt = nLh42*(hin42-nh42)
+
+#################
+### auxiliary ###
+#################
+
+aux cer=Cer
+aux atpc=ATPc
+aux atpm=ATPm
+aux jipr=Jipr*(1-RS1)
+aux nJipr=nJipr*RS1
+aux jmcu=Jmcu*(1-RS2)
+aux njmcu=nJmcu*RS2
+aux oipr=Oipr
+aux noipr=nOipr
+
+aux fvm=(a1*Io - a2*If1 - Jant - Jhleak - Jncx*(1-RS2) - nJncx*RS2 - 2*(Jmcu*(1-RS2) + nJmcu*RS2) - Iagc)/Cpc
+
+
+###############
+### Options ###
+###############
+
+@ total=500, dt=0.01, bounds=50000
+@ meth=stiff
+@ xhi=5000, xlo=0, yhi=3, ylo=0
+@ parmin=0, parmax=2
+@ ntst=50, nmax=300000, npr=300000
+@ dsmin=1e-8, dsmax=0.1, ds=0.01
+@ autoxmin=0, autoxmax=2, autoymin=0, autoymax=2
+@ epsu=1e-7, epsl=1e-7, epss=1e-5
+@ maxstor=1000000
